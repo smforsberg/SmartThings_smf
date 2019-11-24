@@ -7,7 +7,7 @@
  *      http://www.apache.org/licenses/LICENSE-2.0
  *
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
- *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License
+ *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CON  DITIONS OF ANY KIND, either express or implied. See the License
  *  for the specific language governing permissions and limitations under the License.
  *
  *  2019-11-24 Bringing in repo from https://github.com/lgkahn/SmartThingsPublic/blob/MSA-752-6/devicetypes/smartthings/enerwave-zw15sm-metering-switch.src/enerwave-zw15sm-metering-switch.groovy
@@ -15,7 +15,7 @@
  */
 
 metadata {
-	definition (name: "Enerwave ZW15SM Metering Switch", namespace: "seanmf83", author: "Sean Forsberg") {
+	definition (name: "Enerwave ZW15SM Metering Switch", namespace: "enerwave", author: "Sean Forsberg") {
 		capability "Energy Meter"
 		capability "Actuator"
 		capability "Switch"
