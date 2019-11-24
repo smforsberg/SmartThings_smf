@@ -15,7 +15,7 @@
  */
 
 metadata {
-	definition (name: "Enerwave ZW15SM Metering Switch", namespace: "smartthings", author: "LGKahn") {
+	definition (name: "Enerwave ZW15SM Metering Switch", namespace: "seanmf83", author: "Sean Forsberg") {
 		capability "Energy Meter"
 		capability "Actuator"
 		capability "Switch"
