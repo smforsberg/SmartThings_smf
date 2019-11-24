@@ -4,7 +4,7 @@
  *  Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except
  *  in compliance with the License. You may obtain a copy of the License at:
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *	  http://www.apache.org/licenses/LICENSE-2.0
  *
  *  Unless required by applicable law or agreed to in writing, software distributed under the License is distributed
  *  on an "AS IS" BASIS, WITHOUT WARRANTIES OR CON  DITIONS OF ANY KIND, either express or implied. See the License
@@ -24,16 +24,17 @@ metadata {
 		capability "Refresh"
 		capability "Configuration"
 		capability "Sensor"
-        capability "Indicator"
-       
+		capability "Indicator"
+	   
 		fingerprint inClusters: "0x25,0x32"
 	}
 
 
-    preferences {
-        input("ReportTime", "number", title: "Report Timeout Interval?", description: "The time in minutes after which an update is sent?", defaultValue: 3, required: false)
-        input("WattageChange", "number", title: "Wattage change before reporting: 1-25?", description: "The minimum wattage change before reporting?",defaultValue: 15, required: false)
-    }
+	preferences {
+		input("ReportTime", "number", title: "Report Timeout Interval?", description: "The time in minutes after which an update is sent?", defaultValue: 3, required: false)
+		input("WattageChange", "number", title: "Wattage change before reporting: 1-25?", description: "The minimum wattage change before reporting?",defaultValue: 15, required: false)
+		input("SyncLedWithPower", "number", title: "Sync LED With Power?: 0:opposite, 1:Synced", description: "Sync LED With Power?",defaultValue: 0, required: false)		
+	}
 
 	// simulator metadata
 	simulator {
@@ -74,11 +75,6 @@ metadata {
 			state "default", label:'', action:"refresh.refresh", icon:"st.secondary.refresh"
 		}
 
-		standardTile("indicatorStatus", "device.indicatorStatus", width: 1, height: 1, inactiveLabel: false, decoration: "flat") {
-			state "when off", action:"indicator.indicatorWhenOn", icon:"st.indicators.lit-when-off"
-			state "when on", action:"indicator.indicatorWhenOff", icon:"st.indicators.lit-when-on"
-		}
-
 		main(["switch","power","energy"])
 		details(["switch","power","energy","indicatorStatus","refresh","reset"])
 	}
@@ -87,8 +83,8 @@ metadata {
 
 def parse(String description) {
 	def result = null
-    //log.debug "in parse desc = $description"
-    
+	//log.debug "in parse desc = $description"
+	
 	if(description == "updated") return 
 	def cmd = zwave.parse(description, [0x20: 1, 0x32: 1, 0x72: 2])
 	if (cmd) {
@@ -100,14 +96,14 @@ def parse(String description) {
 
 
 def zwaveEvent(physicalgraph.zwave.commands.meterv1.MeterReport cmd) {
-    //log.debug "in meter report cmd = $cmd "
+	//log.debug "in meter report cmd = $cmd "
 	if (cmd.scale == 0) {
-    	log.debug "got energy/kWh = $cmd.scaledMeterValue"
+		log.debug "got energy/kWh = $cmd.scaledMeterValue"
 		createEvent(name: "energy", value: cmd.scaledMeterValue, unit: "kWh")
 	} else if (cmd.scale == 1) {
 		createEvent(name: "energy", value: cmd.scaledMeterValue, unit: "kVAh")
 	} else if (cmd.scale == 2) {
-    	log.debug "got power/W = $cmd.scaledMeterValue"
+		log.debug "got power/W = $cmd.scaledMeterValue"
 		createEvent(name: "power", value: Math.round(cmd.scaledMeterValue), unit: "W")
 	}
 }
@@ -127,18 +123,17 @@ def zwaveEvent(physicalgraph.zwave.commands.switchbinaryv1.SwitchBinaryReport cm
 
 
 def zwaveEvent(physicalgraph.zwave.commands.configurationv1.ConfigurationReport cmd) {
-    // log.debug "in config report  got indicatorstatus = $state.currentIndicatorStatus"	
-	[name: "indicatorStatus", value: state.currentIndicatorStatus, display: true]
+	log.debug "in config report"
 }
 
 def zwaveEvent(physicalgraph.zwave.commands.manufacturerspecificv2.ManufacturerSpecificReport cmd) {
-    log.debug "in manuf specific report"
+	log.debug "in manuf specific report"
 	def result = []
 	
-    result << response(delayBetween([
-        zwave.meterV2.meterGet(scale: 0).format(),
-        zwave.meterV2.meterGet(scale: 2).format(),
-    ]))
+	result << response(delayBetween([
+		zwave.meterV2.meterGet(scale: 0).format(),
+		zwave.meterV2.meterGet(scale: 2).format(),
+	]))
 
 	result
 }
@@ -149,7 +144,7 @@ def zwaveEvent(physicalgraph.zwave.Command cmd) {
 }
 
 def on() {
-    log.debug "in on"
+	log.debug "in on"
 	[
 		zwave.basicV1.basicSet(value: 0xFF).format(),
 		zwave.switchBinaryV1.switchBinaryGet().format(),
@@ -159,9 +154,9 @@ def on() {
 }
 
 def off() {
-    log.debug "in off"
+	log.debug "in off"
 	[
-    	zwave.basicV1.basicSet(value: 0x00).format(),
+		zwave.basicV1.basicSet(value: 0x00).format(),
 		zwave.switchBinaryV1.switchBinaryGet().format(),
 		"delay 3000",
 		zwave.meterV2.meterGet(scale: 2).format()
@@ -177,70 +172,64 @@ def poll() {
 }
 
 def refresh() {
-	def value = "when off"
-    log.debug "in refresh for when on got indicatorstatus = $state.currentIndicatorStatus"
-    sendEvent(name: "indicatorStatus", value: state.currentIndicatorStatus, display: true)
-	
+	log.debug "in refresh"	
 	delayBetween([
 		zwave.switchBinaryV1.switchBinaryGet().format(),
 		zwave.meterV2.meterGet(scale: 0).format(),
 		zwave.meterV2.meterGet(scale: 2).format()
 	])
-    
+	
   
 }
 
 def configure() {
-    if (settings.WattageChange < 1 || settings.WattageChange > 25) {
-        settings.WattageChange = 5;
-    }
-    
-    if (settings.ReportTime == null)
-        settings.ReportTime = 5
+	log.debug "In configure"
+	
+	if (settings.WattageChange < 1 || settings.WattageChange > 25) {
+		settings.WattageChange = 5;
+	}
+	
+	if (settings.ReportTime == null)
+		settings.ReportTime = 5
 
-    if (settings.WattageChange == null)
-        settings.WattageChnage = 10;
-   
-    log.debug "In configure timeout value = $settings.ReportTime"
-    log.debug "Wattage change = $settings.WattageChange"
-    def wattageadjust = settings.WattageChange * 10;
-    log.debug "Wattage change = $settings.WattageChange adjusted: $wattageadjust "
-
-    delayBetween([
-        zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, scaledConfigurationValue: settings.ReportTime).format(),	//send meter report every x minutes.
-        zwave.configurationV1.configurationSet(parameterNumber: 10, size: 1, scaledConfigurationValue: settings.ReportTime).format(),	//accumulated energy report meter interval
-        zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, scaledConfigurationValue: 1).format(),	//send only meter report when wattage change 1=meter, 2=multilevel , 3=both, 0=none 
-        zwave.configurationV1.configurationSet(parameterNumber: 12, size: 1, scaledConfigurationValue: wattageadjust).format(),//Minimum change in wattage 0-255
-        zwave.configurationV1.configurationSet(parameterNumber: 9, size: 1, scaledConfigurationValue: 0).format(),// dont send multilevel report
-    ])
+	if (settings.WattageChange == null)
+		settings.WattageChnage = 10;
+	
+	if (settings.SyncLedWithPower < 0 || settings.SyncLedWithPower > 1) {
+		settings.SyncLedWithPower = 1;
+	}
+	 
+	log.debug "ReportTime: $settings.ReportTime, WattageChange: $settings.WattageChange, SyncLedWithPower: $settings.SyncLedWithPower"
+	
+	def wattageAdjust = settings.WattageChange * 10;
+	
+	delayBetween([
+		// LED Control
+		zwave.configurationV1.configurationSet(parameterNumber: 0x01, size: 1, scaledConfigurationValue: settings.SyncLedWithPower).format(),
+		// Button Toggle Control
+		zwave.configurationV1.configurationSet(parameterNumber: 0x02, size: 1, scaledConfigurationValue: 0).format(),
+		//send meter report every x minutes.
+		zwave.configurationV1.configurationSet(parameterNumber: 8, size: 1, scaledConfigurationValue: settings.ReportTime).format(),
+		// dont send multilevel report
+		zwave.configurationV1.configurationSet(parameterNumber: 9, size: 1, scaledConfigurationValue: 0).format(),
+		//accumulated energy report meter interval
+		zwave.configurationV1.configurationSet(parameterNumber: 10, size: 1, scaledConfigurationValue: settings.ReportTime).format(),
+		//send only meter report when wattage change 1=meter, 2=multilevel , 3=both, 0=none 
+		zwave.configurationV1.configurationSet(parameterNumber: 11, size: 1, scaledConfigurationValue: 1).format(),
+		//Minimum change in wattage (0.0,25.5) 0-255
+		zwave.configurationV1.configurationSet(parameterNumber: 12, size: 1, scaledConfigurationValue: wattageAdjust).format(),
+	])
 }
 
 def reset() {
-    log.debug "in reset"
-	state.currentIndicatorStatus = "when on"
-
+	log.debug "in reset"
 	return [
 		zwave.meterV2.meterReset().format(),
 		zwave.meterV2.meterGet(scale: 0).format()
 	]
 }
 
-def indicatorWhenOn() {
-    log.debug "in when on"
-    state.currentIndicatorStatus = "when on"
-	sendEvent(name: "indicatorStatus", value: "when on", display: true)
-	zwave.configurationV1.configurationSet(parameterNumber: 0x01, size: 1, scaledConfigurationValue: 1).format()
-}
-
-def indicatorWhenOff() {
-    log.debug "in when off"
-    state.currentIndicatorStatus = "when off"
-	sendEvent(name: "indicatorStatus", value: "when off", display: true)	  
-	zwave.configurationV1.configurationSet(parameterNumber: 0x01, size: 1, scaledConfigurationValue: 0).format()
-}
-
-
 def updated() {
-    log.debug "in updated"
-    configure();
+	log.debug "in updated"
+	configure();
 }
